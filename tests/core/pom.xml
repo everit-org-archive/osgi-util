@@ -54,7 +54,7 @@
             </plugin>
             <plugin>
                 <groupId>org.everit.osgi.dev</groupId>
-                <artifactId>maven-eosgi-plugin</artifactId>
+                <artifactId>eosgi-maven-plugin</artifactId>
                 <version>${project.version}</version>
                 <executions>
                     <execution>
