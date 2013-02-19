@@ -22,8 +22,10 @@ package org.everit.osgi.util.core.requisite;
  */
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,31 +45,45 @@ public class MultiRequisiteManager<D> {
         @Override
         public void requisiteAvailable(final D dependentObject, final ServiceReference reference) {
             Map<String, ServiceReference> allReferences = null;
+            StringBuilder sb = new StringBuilder();
+            sb.append("Service reference '").append(reference.toString()).append("' with requisite id '")
+                    .append(requisiteId).append("' available for ").append(dependentObject.toString())
+                    .append(" in multi requisite tracker.");
             synchronized (helper) {
-                LOGGER.info("Service reference '" + reference.toString() + "' available for "
-                        + dependentObject.toString() + " in multi requisiite tracker");
                 Map<String, ServiceReference> references = dependentObjectWithReferences.get(dependentObject);
                 if (references == null) {
                     references = new HashMap<String, ServiceReference>();
                     dependentObjectWithReferences.put(dependentObject, references);
                 }
                 references.put(requisiteId, reference);
+                Map<String, AbstractRequisiteTracker<D>> dObjectByRequisiteId = dependentObjectWithRequisiteTrackers
+                        .get(dependentObject);
                 if (references.size() == dependentObjectWithRequisiteTrackers.get(dependentObject).size()) {
                     allReferences = references;
+                    sb.append(" At this time all requisites are available. Starting dependent object.");
+                } else {
+                    if (LOGGER.isInfoEnabled()) {
+                        Set<String> necessaryRequisiteIds = new HashSet<String>(dObjectByRequisiteId.keySet());
+                        Set<String> availableRequiesiteIds = references.keySet();
+                        necessaryRequisiteIds.removeAll(availableRequiesiteIds);
+                        sb.append(" Waiting for the following requiesites: ").append(necessaryRequisiteIds.toString());
+                    }
                 }
             }
             if (allReferences != null) {
                 multiRequisiteListener.startDependentObject(dependentObject, allReferences);
             }
+            LOGGER.info(sb.toString());
         }
 
         @Override
         public void requisiteRemoved(final D dependentObject, final ServiceReference reference) {
             if (reference == null) {
-               LOGGER.info("Requisite removed from dependent object: " + dependentObject.toString()
+                LOGGER.info("Requisite removed from dependent object: " + dependentObject.toString()
                         + " when removed bundle from tracking");
             } else {
-                LOGGER.info("Requisite '" +reference.toString() + "' removed that was registered for dependent object " + dependentObject.toString());
+                LOGGER.info("Requisite '" + reference.toString()
+                        + "' removed that was registered for dependent object " + dependentObject.toString());
             }
 
             boolean stoppingEvent = false;
